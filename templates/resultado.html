@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Resultado</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<div class="container">
+    <h2>Resultado da Extração</h2>
+    <p><b>URL:</b> {{ url }}</p>
+    <p><b>Razão Social:</b> {{ razao_social }}</p>
+    <p><b>Valor Total:</b> {{ valor_total }}</p>
+    <hr>
+    <h3>Perfil Selecionado</h3>
+    <p><b>Nome:</b> {{ perfil['Nome'] }}</p>
+    <p><b>Dados Bancários:</b> {{ perfil['DadosBancarios'] }}</p>
+    <p><b>Matrícula:</b> {{ perfil['Matricula'] }}</p>
+    <p><b>CPF:</b> {{ perfil['CPF'] }}</p>
+    <a href="/" class="btn">Voltar</a>
+</div>
+</body>
+</html>

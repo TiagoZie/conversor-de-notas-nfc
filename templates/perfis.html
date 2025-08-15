@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Criar Perfil</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<div class="container">
+    <header>
+        <h1>Novo Perfil</h1>
+    </header>
+
+    <main>
+        <form method="POST">
+            <input type="text" name="nome" placeholder="Nome" required>
+            <input type="text" name="dados_bancarios" placeholder="Dados Bancários" required>
+            <input type="text" name="matricula" placeholder="Matrícula" required>
+            <input type="text" name="cpf" placeholder="CPF" required>
+            <button type="submit">Salvar Perfil</button>
+        </form>
+    </main>
+</div>
+</body>
+</html>
