@@ -7,15 +7,24 @@
 <body>
 <div class="container">
     <header>
-        <h1>Novo Perfil</h1>
+        <h1><span>Perfil</span></h1>
+        <div class="top-buttons">
+            <a href="{{ url_for('index') }}" class="btn">Home</a>
+            <a href="{{ url_for('configs') }}" class="btn">Configurações</a>
+        </div>
     </header>
 
     <main>
         <form method="POST">
+            <h1>Informações Pessoais</h1>
             <input type="text" name="nome" placeholder="Nome" required>
-            <input type="text" name="dados_bancarios" placeholder="Dados Bancários" required>
             <input type="text" name="matricula" placeholder="Matrícula" required>
             <input type="text" name="cpf" placeholder="CPF" required>
+            <br>
+            <h1>Dados Bancários</h1>
+            <input type="text" name="agencia_banco" placeholder="Agência do Banco" required>
+            <input type="text" name="nome_banco" placeholder="Nome do Banco" required>
+            <input type="text" name="numero_conta" placeholder="Número da conta" required>
             <button type="submit">Salvar Perfil</button>
         </form>
     </main>

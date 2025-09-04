@@ -1,21 +1,22 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Forms Gerator</title>
+    <title>CONVERSOR NFC</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
 <div class="container">
     <header>
-        <h1>FORMS <span>GERATOR</span></h1>
+        <h1>CONVERSOR <span>NFC</span></h1>
         <div class="top-buttons">
             <a href="/perfis" class="btn">Perfis</a>
+            <a href="{{ url_for('configs') }}" class="btn">Configurações</a>
         </div>
     </header>
 
     <main>
         <form method="POST">
-            <p>Gerador de Formulário, use gratuitamente!</p>
+            <p>Conversor de NFCe para formulários</p>
             <input type="text" name="url" placeholder="Insira a URL aqui..." required>
             <select name="perfil" required>
                 {% for perfil in perfis %}
