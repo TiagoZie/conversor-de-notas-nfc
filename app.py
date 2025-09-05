@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, send_file
+from flask import Flask, render_template, request, redirect, url_for, send_file, session
 import csv
 import os
 import requests
@@ -8,10 +8,10 @@ from reportlab.pdfgen import canvas
 from io import BytesIO
 
 app = Flask(__name__)
+app.secret_key = "20197431209uwdquw9ex83u"
 
 ARQUIVO_PERFIS = 'perfis.csv'
 
-# Criar arquivo se não existir
 if not os.path.exists(ARQUIVO_PERFIS):
     with open(ARQUIVO_PERFIS, 'w', newline='', encoding='utf-8') as f:
         writer = csv.writer(f)
@@ -76,6 +76,7 @@ def index():
     perfis = ler_perfis()
     if request.method == "POST":
         url = request.form.get("url")
+        session["url"] = url 
         perfil_index = int(request.form.get("perfil"))
         perfil_selecionado = perfis[perfil_index]
 
@@ -114,6 +115,9 @@ def perfis():
 def gerar_pdf(perfil_index):
     perfis = ler_perfis()
     perfil = perfis[perfil_index]
+    url = session.get("url")
+    razao_social, valor_total, data_hora = extrair_dados(url)
+
 
     buffer = BytesIO()
     c = canvas.Canvas(buffer, pagesize=A4)
@@ -126,14 +130,13 @@ def gerar_pdf(perfil_index):
 
     c.setFont("Helvetica", 10)
     c.drawString(50, 740, f"Nome: {perfil['Nome']} CPF: {perfil['CPF']}")
-    c.drawString(50, 725, f"Cargo: {perfil.get('Cargo', 'XXXXX')} Matrícula: {perfil['Matricula']}")
-    c.drawString(50, 710, f"Destino: {perfil.get('Destino', 'XXXXX')}")
+    c.drawString(50, 725, f"Cargo: {perfil.get('Cargo', '')} Matrícula: {perfil['Matricula']}")
+    c.drawString(50, 710, f"Destino: {perfil.get('Destino', '')}")
     c.drawString(50, 695, f"Meio de Transporte: {perfil.get('MeioTransporte', 'Outros')}")
 
-    c.drawString(50, 670, "Descrição de Valores:")
-    c.drawString(50, 655, "Data: 29/07/2025 - Almoço - R$ 160,00")
-    c.drawString(50, 640, "Data: 29/07/2025 - Jantar - R$ 160,00")
-    c.drawString(50, 625, "Total: R$ 320,00")
+    c.drawString(50, 670, f"Razão Social: {razao_social}")
+    c.drawString(50, 655, f"Descrição de Valores: {data_hora} - Almoço - {valor_total}")
+    c.drawString(50, 640, f"Total: {valor_total}")
 
     c.showPage()
     c.save()
