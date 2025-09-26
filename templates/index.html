@@ -20,7 +20,7 @@
             <input type="text" name="url" placeholder="Insira a URL aqui..." required>
             <select name="perfil" required>
                 {% for perfil in perfis %}
-                <option value="{{ loop.index0 }}">{{ perfil['Nome'] }}</option>
+                <option value="{{ loop.index0 }}">{{ perfil['nome'] }}</option>
                 {% endfor %}
             </select>
             <button type="submit">GERAR</button>

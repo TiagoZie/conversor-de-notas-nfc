@@ -1,6 +1,5 @@
 from flask import Flask, render_template, request, redirect, url_for, send_file, session
-import csv
-import os
+import sqlite3
 import requests
 from bs4 import BeautifulSoup
 from reportlab.lib.pagesizes import A4
@@ -10,33 +9,56 @@ from io import BytesIO
 app = Flask(__name__)
 app.secret_key = "20197431209uwdquw9ex83u"
 
-ARQUIVO_PERFIS = 'perfis.csv'
+DB_FILE = "database.db"
 
-if not os.path.exists(ARQUIVO_PERFIS):
-    with open(ARQUIVO_PERFIS, 'w', newline='', encoding='utf-8') as f:
-        writer = csv.writer(f)
-        writer.writerow(["Nome", "Agenciabanco", "NomeBanco", "NumeroConta", "Matricula", "CPF"])
-
-
+def init_db():
+    with sqlite3.connect(DB_FILE) as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS perfis (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                nome TEXT,
+                agencia_banco TEXT,
+                nome_banco TEXT,
+                numero_conta TEXT,
+                matricula TEXT,
+                cpf TEXT
+            )
+        """)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS consultas (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                url TEXT,
+                razao_social TEXT,
+                valor_total TEXT,
+                data_hora TEXT,
+                criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        conn.commit()
+init_db()
 @app.route("/configs", methods=["GET", "POST"])
 def configs():
     return render_template("configs.html")
 
 
 def ler_perfis():
-    perfis = []
-    with open(ARQUIVO_PERFIS, newline='', encoding='utf-8') as f:
-        reader = csv.DictReader(f)
-        for row in reader:
-            perfis.append(row)
-    return perfis
+    with sqlite3.connect(DB_FILE) as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM perfis")
+        rows = cursor.fetchall()
+        colunas = [d[0] for d in cursor.description]
+        return [dict(zip(colunas, row)) for row in rows]
 
 
 def adicionar_perfil(nome, agencia_banco, nome_banco, numero_conta, matricula, cpf):
-    with open(ARQUIVO_PERFIS, 'a', newline='', encoding='utf-8') as f:
-        writer = csv.writer(f)
-        writer.writerow([nome, agencia_banco, nome_banco, numero_conta, matricula, cpf])
-
+    with sqlite3.connect(DB_FILE) as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+            INSERT INTO perfis (nome, agencia_banco, nome_banco, numero_conta, matricula, cpf)
+            VALUES (?, ?, ?, ?, ?, ?) 
+            """, (nome, agencia_banco, nome_banco, numero_conta, matricula, cpf))
+        conn.commit()
 
 def extrair_dados(url):
     try:
@@ -68,7 +90,7 @@ def extrair_dados(url):
         return razao_social, valor_total, data_hora
 
     except Exception as e:
-        return f"Erro ao acessar a URL: {e}", None
+        return f"Erro ao acessar a URL: {e}", None, None
 
 
 @app.route("/", methods=["GET", "POST"])
@@ -129,10 +151,11 @@ def gerar_pdf(perfil_index):
     c.drawCentredString(300, 780, "AVS – AUTORIZAÇÃO DE VIAGENS A SERVIÇO")
 
     c.setFont("Helvetica", 10)
-    c.drawString(50, 740, f"Nome: {perfil['Nome']} CPF: {perfil['CPF']}")
-    c.drawString(50, 725, f"Cargo: {perfil.get('Cargo', '')} Matrícula: {perfil['Matricula']}")
-    c.drawString(50, 710, f"Destino: {perfil.get('Destino', '')}")
-    c.drawString(50, 695, f"Meio de Transporte: {perfil.get('MeioTransporte', 'Outros')}")
+    c.drawString(50, 740, f"Nome: {perfil['nome']} CPF: {perfil['cpf']}")
+    c.drawString(50, 725, f"Matrícula: {perfil['matricula']}")
+    c.drawString(50, 710, f"Banco: {perfil['nome_banco']} Agência: {perfil['agencia_banco']}")
+    c.drawString(50, 695, f"Conta: {perfil['numero_conta']}")
+
 
     c.drawString(50, 670, f"Razão Social: {razao_social}")
     c.drawString(50, 655, f"Descrição de Valores: {data_hora} - Almoço - {valor_total}")
