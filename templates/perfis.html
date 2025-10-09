@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
+    <meta charset="utf-8">
     <title>Criar Perfil</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
@@ -17,14 +18,26 @@
     <main>
         <form method="POST">
             <h1>Informações Pessoais</h1>
-            <input type="text" name="nome" placeholder="Nome" required>
+            <input type="text" name="nome" placeholder="Nome completo" required>
             <input type="text" name="matricula" placeholder="Matrícula" required>
             <input type="text" name="cpf" placeholder="CPF" required>
+            <input type="text" name="cargo" placeholder="Cargo" required>
             <br>
+
             <h1>Dados Bancários</h1>
             <input type="text" name="agencia_banco" placeholder="Agência do Banco" required>
             <input type="text" name="nome_banco" placeholder="Nome do Banco" required>
             <input type="text" name="numero_conta" placeholder="Número da conta" required>
+            <br>
+
+            <h1>Tipo de Servidor</h1>
+            <select name="tipo_servidor" required>
+                <option value="efetivo">Efetivo</option>
+                <option value="comissionado">Comissionado</option>
+                <option value="agente politico">Agente Político</option>
+                <option value="conselheiro municipal">Conselheiro Municipal</option>
+            </select>
+
             <button type="submit">Salvar Perfil</button>
         </form>
     </main>

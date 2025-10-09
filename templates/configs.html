@@ -1,21 +1,39 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>CONFIGURAÇÕES</title>
+    <meta charset="utf-8">
+    <title>Configurações</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
 <div class="container">
     <header>
-        <h1><span>Configurações</span></h1>
+        <h1>Configurações</h1>
         <div class="top-buttons">
             <a href="{{ url_for('index') }}" class="btn">Home</a>
-            <a href="{{ url_for('perfis') }}" class="btn">Perfil</a>
+            <a href="{{ url_for('perfis') }}" class="btn">Perfis</a>
         </div>
     </header>
 
     <main>
-        
+        <form method="POST">
+            <label>Nome da Secretaria</label>
+            <input type="text" name="nome_secretaria" value="{{ configs.nome_secretaria }}" required>
+
+            <label>Nome do(a) Secretário(a)</label>
+            <input type="text" name="nome_secretario" value="{{ configs.nome_secretario }}" required>
+
+            <label>Cargo do(a) Secretário(a)</label>
+            <input type="text" name="cargo_secretario" value="{{ configs.cargo_secretario }}" required>
+
+            <label>Cidade de Partida</label>
+            <input type="text" name="cidade_partida" value="{{ configs.cidade_partida }}" required>
+
+            <label>Número inicial de solicitação</label>
+            <input type="number" name="numero_solicitacao" value="{{ configs.numero_solicitacao }}" min="1" required>
+
+            <button type="submit">Salvar Configurações</button>
+        </form>
     </main>
 </div>
 </body>

@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
+    <meta charset="utf-8">
     <title>Resultado</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
@@ -21,7 +22,31 @@
     <p><b>Conta:</b> {{ perfil['numero_conta'] }}</p>
 
     <hr>
-    
+    <h3>Itens extraídos</h3>
+    {% if itens %}
+    <table>
+        <thead>
+            <tr>
+                <th>Nº nota</th><th>Data</th><th>Descrição</th><th>Valor</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% set soma = 0 %}
+            {% for it in itens %}
+            <tr>
+                <td>{{ it.numero }}</td>
+                <td>{{ it.data }}</td>
+                <td>{{ it.descricao }}</td>
+                <td>{{ it.valor }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p>Nenhum item encontrado — será gerado um item com o total.</p>
+    {% endif %}
+
+    <hr>
     <a href="{{ url_for('gerar_pdf', perfil_index=perfil_index) }}" class="btn">Gerar PDF</a>
     <a href="{{ url_for('index') }}" class="btn">Voltar</a>
 </div>
