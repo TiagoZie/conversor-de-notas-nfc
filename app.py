@@ -260,9 +260,9 @@ def gerar_pdf(perfil_index):
     buffer = BytesIO()
     c = canvas.Canvas(buffer, pagesize=A4)
     width, height = A4
-    x_left = 80
+    x_left = 90  
     x_center = width / 2
-    y = height - 60
+    y = height - 70
 
     c.setFont("Helvetica-Bold", 14)
     c.drawCentredString(x_center, y, "PREFEITURA MUNICIPAL DE SÃO MATEUS DO SUL")
@@ -272,85 +272,101 @@ def gerar_pdf(perfil_index):
     y -= 35
 
     c.setFont("Helvetica", 10)
-    c.drawString(x_left, y, f"( ) adiantamento  ( ) ressarcimento")
+    c.drawString(x_left, y, "( ) adiantamento    ( ) ressarcimento")
     if "adiant" in tipo_solicitacao.lower():
-        c.drawString(x_left + 8, y, "X")
+        c.drawString(x_left + 9, y, "X")
     elif "ress" in tipo_solicitacao.lower():
-        c.drawString(x_left + 47, y, "X")
+        c.drawString(x_left + 85, y, "X")
     y -= 25
 
     c.drawString(x_left, y, f"Solicitação nº {numero_solicitacao:03d}")
     y -= 20
     c.drawString(x_left, y, f"Secretaria: {cfg.get('nome_secretaria')}")
     y -= 25
-    c.drawString(x_left, y, f"Nome: {perfil['nome']}     CPF: {perfil['cpf']}")
+    c.drawString(x_left, y, f"Nome: {perfil['nome']}       CPF: {perfil['cpf']}")
     y -= 20
-    c.drawString(x_left, y, f"Cargo: {perfil['cargo']}     Matrícula: {perfil['matricula']}")
+    c.drawString(x_left, y, f"Cargo: {perfil['cargo']}       Matrícula: {perfil['matricula']}")
     y -= 25
 
     tipo = perfil.get("tipo_servidor", "").lower()
     tipos = ["efetivo", "comissionado", "agente politico", "conselheiro municipal"]
-    c.drawString(x_left, y, "Servidor: ")
+    c.drawString(x_left, y, "Servidor:")
+    base_x = x_left + 65
+    espacos = [0, 55, 138, 224]
     for i, t in enumerate(tipos):
         mark = "x" if t == tipo else " "
-        c.drawString(x_left + 70 + i * 110, y, f"({mark}) {t}")
-    y -= 30
+        c.drawString(base_x + espacos[i], y, f"({mark}) {t}")
+    y -= 35
 
     c.drawString(x_left, y, f"Serviço a ser realizado: Viagem para {cidade_destino}")
     y -= 20
     c.drawString(x_left, y, f"Destino: {cidade_destino}")
     y -= 20
     c.drawString(x_left, y, "Meio de Transporte: (  ) Veículo Oficial   (  ) Coletivo   (  ) Outros")
-    y -= 30
+    y -= 35
 
     c.setFont("Helvetica-Bold", 10)
     c.drawString(x_left, y, "Descrição de Valores:")
     y -= 15
 
     headers = ["Número da nota", "Data", "Descrição", "Valor total"]
-    col_widths = [90, 90, 230, 90]
+    col_widths = [100, 90, 230, 90]
     row_height = 18
-
-    table_x = x_left
+    table_x = x_left - 25
     table_y = y
 
-    def draw_table_border(rows_count):
-        total_height = row_height * (rows_count + 1)
-        total_width = sum(col_widths)
-        c.rect(table_x, table_y - total_height + row_height, total_width, total_height)
-    
-        for i in range(rows_count + 1):
-            c.line(table_x, table_y - i * row_height, table_x + total_width, table_y - i * row_height)
-
-        x = table_x
-        for w in col_widths:
-            x += w
-            c.line(x, table_y, x, table_y - total_height + row_height)
+    if not itens:
+        itens = [{
+            "numero": "1",
+            "data": data_hora.split()[0],
+            "descricao": "Tipo da despesa",
+            "valor": valor_total
+        }]
 
     c.setFont("Helvetica-Bold", 9)
     cx = table_x + 5
     for i, h in enumerate(headers):
         c.drawString(cx, table_y - 12, h)
         cx += col_widths[i]
+    table_y -= row_height
 
-    if not itens:
-        itens = [{"numero": "", "data": data_hora.split()[0], "descricao": "Despesa (extraída)", "valor": valor_total}]
     c.setFont("Helvetica", 9)
-    y_pos = table_y - row_height
+    start_y = table_y
 
     for it in itens:
-        c.drawString(table_x + 5, y_pos - 12, it.get("numero", ""))
-        c.drawString(table_x + 95, y_pos - 12, it.get("data", ""))
-        c.drawString(table_x + 185, y_pos - 12, it.get("descricao", "")[:35])
-        c.drawRightString(table_x + 490, y_pos - 12, it.get("valor", ""))
-        y_pos -= row_height
+        numero = it.get("numero", "1")
+        data = it.get("data", "")
+        desc = it.get("descricao", "")[:40]
+        valor = it.get("valor", "")
 
-    draw_table_border(len(itens))
-    y = y_pos - 40
+        c.drawString(table_x + 5, start_y - 12, numero)
+        c.drawString(table_x + 110, start_y - 12, data)
+        c.drawString(table_x + 200, start_y - 12, desc)
+        c.drawRightString(table_x + 505, start_y - 12, valor)
 
+        start_y -= row_height
+
+    total_rows = len(itens) + 1
+    total_height = total_rows * row_height
+    total_width = sum(col_widths)
+
+    c.rect(table_x, table_y - (len(itens) * row_height), total_width, total_height)
+
+    for i in range(total_rows ):
+        y_line = table_y - (i * row_height)
+        c.line(table_x, y_line, table_x + total_width, y_line)
+        
+    x_pos = table_x
+    for w in col_widths:
+        x_pos += w
+        c.line(x_pos, table_y, x_pos, table_y - (len(itens) * row_height))
+
+    total_y = table_y - (len(itens) * row_height) - 25
     c.setFont("Helvetica-Bold", 10)
-    c.drawRightString(width - 80, y, f"Total: {valor_total}")
-    y -= 40
+    c.rect(table_x + total_width - 120, total_y, 120, 20)
+    c.drawRightString(table_x + total_width - 10, total_y + 6, f"Total: {valor_total}")
+    y = total_y - 50
+
 
     c.setFont("Helvetica", 10)
     c.drawString(x_left, y, f"C/C {perfil['numero_conta']}  – Ag. {perfil['agencia_banco']}  – Banco {perfil['nome_banco']}")
@@ -370,6 +386,8 @@ def gerar_pdf(perfil_index):
     c.save()
     buffer.seek(0)
     return send_file(buffer, as_attachment=True, download_name="avs.pdf", mimetype="application/pdf")
+    #return send_file(buffer, as_attachment=False, mimetype="application/pdf") #caso precise editar sem baixar toda vez
+
 
 
 if __name__ == "__main__":
