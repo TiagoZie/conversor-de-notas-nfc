@@ -13,10 +13,6 @@ app.secret_key = "20197431209uwdquw9ex83u"
 
 DB_FILE = "database.db"
 
-
-# =====================================================
-#  Banco de dados
-# =====================================================
 def init_db():
     with sqlite3.connect(DB_FILE) as conn:
         c = conn.cursor()
@@ -156,19 +152,23 @@ def extrair_dados(url):
 
         razao = soup.find("div", class_="txtTopo")
         valor = soup.find("span", class_="totalNumb txtMax")
-
+        numero_tag = soup.find("strong", string=re.compile(r"N[úu]mero", re.I))
+        if numero_tag:
+            numero_nota = numero_tag.next_sibling.strip()
+        else:
+            numero_nota = "Indisponível"
         razao_social = razao.text.strip() if razao else "Não encontrado"
         valor_total = valor.text.strip() if valor else "0,00"
         data_hora = datetime.datetime.now().strftime("%d/%m/%Y %H:%M")
 
         itens = [{
-            "numero": "",
+            "numero": numero_nota,
             "data": data_hora.split()[0],
             "descricao": "Despesa (extraída)",
             "valor": valor_total
         }]
 
-        return razao_social, valor_total, data_hora, itens
+        return razao_social, valor_total, data_hora, itens, numero_nota
 
     except Exception as e:
         return f"Erro: {e}", None, None, []
@@ -230,14 +230,14 @@ def index():
         session["tipo_solicitacao"] = tipo_solicitacao
         session["perfil_index"] = perfil_index
 
-        razao_social, valor_total, data_hora, itens = extrair_dados(url)
+        razao_social, valor_total, data_hora, itens, numero_nota = extrair_dados(url)
         session["itens"] = itens
 
         return render_template("resultado.html", url=url, razao_social=razao_social,
                                valor_total=valor_total, data_hora=data_hora,
                                perfil=perfis[perfil_index], perfil_index=perfil_index,
                                itens=itens, tipo_solicitacao=tipo_solicitacao,
-                               cidade_destino=cidade_destino)
+                               cidade_destino=cidade_destino, numero_nota=numero_nota)
     return render_template("index.html", perfis=perfis)
 
 
@@ -255,7 +255,7 @@ def gerar_pdf(perfil_index):
     cidade_destino = session.get("cidade_destino", "")
     url = session.get("url", "")
     itens = session.get("itens", [])
-    razao_social, valor_total, data_hora, _ = extrair_dados(url)
+    razao_social, valor_total, data_hora, itens, numero_nota = extrair_dados(url)
 
     buffer = BytesIO()
     c = canvas.Canvas(buffer, pagesize=A4)
@@ -317,7 +317,7 @@ def gerar_pdf(perfil_index):
 
     if not itens:
         itens = [{
-            "numero": "1",
+            "numero": numero_nota,
             "data": data_hora.split()[0],
             "descricao": "Tipo da despesa",
             "valor": valor_total
