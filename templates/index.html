@@ -8,7 +8,8 @@
 <body>
 <div class="container">
     <header>
-        <h1>CONVERSOR <span>NFC</span></h1>
+        <h1 style="text-align: left;">CONVERSOR <span>NFC</span></h1>
+        <br>
         <div class="top-buttons">
             <a href="/perfis" class="btn">Perfis</a>
             <a href="{{ url_for('configs') }}" class="btn">Configurações</a>
@@ -16,10 +17,40 @@
     </header>
 
     <main>
-        <form method="POST">
-            <p>Conversor de NFCe para formulários</p>
-            <input type="text" name="url" placeholder="Insira a URL aqui..." required>
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            <ul class="flashes">
+            {% for category, message in messages %}
+              <li class="{{ category }}">{{ message }}</li>
+            {% endfor %}
+            </ul>
+          {% endif %}
+        {% endwith %}
 
+        <div class="form-group">
+            <p>Adicione as URLs das notas fiscais</p>
+            <input type="text" id="url_input" placeholder="Insira a URL aqui...">
+            <div class="button-group">
+                <button type="button" id="add_note_btn" class="btn-secondary">Adicionar Nota</button>
+                <button type="button" id="clear_notes_btn" class="btn-danger">Limpar Lista</button>
+            </div>
+            <div id="feedback_area" class="feedback"></div>
+        </div>
+        
+        <div class="added-notes">
+            <h4>Notas Adicionadas:</h4>
+            <ul id="added_notes_list">
+                {% for url in added_urls %}
+                <li>{{ url }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+        
+        <hr class="separator">
+
+        <form method="POST" action="{{ url_for('index') }}">
+            <p>Preencha os dados da viagem e gere o PDF</p>
+            
             <label for="tipo_solicitacao">Tipo de Solicitação</label>
             <select name="tipo_solicitacao" id="tipo_solicitacao" required>
                 <option value="ressarcimento">Ressarcimento</option>
@@ -39,5 +70,66 @@
         </form>
     </main>
 </div>
+
+<script>
+    document.getElementById('add_note_btn').addEventListener('click', function() {
+        const urlInput = document.getElementById('url_input');
+        const url = urlInput.value.trim();
+        const feedback = document.getElementById('feedback_area');
+        
+        if (url === '') {
+            feedback.textContent = 'Por favor, insira uma URL.';
+            feedback.className = 'feedback error';
+            return;
+        }
+
+        fetch('/add_url_session', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({ url: url })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                feedback.textContent = `Nota adicionada! (Total: ${data.count})`;
+                feedback.className = 'feedback success';
+                
+                // Adiciona na lista visual
+                const list = document.getElementById('added_notes_list');
+                const li = document.createElement('li');
+                li.textContent = data.url_added;
+                list.appendChild(li);
+
+                urlInput.value = ''; // Limpa o campo
+            } else {
+                feedback.textContent = 'Erro ao adicionar nota: ' + data.message;
+                feedback.className = 'feedback error';
+            }
+        })
+        .catch(error => {
+            feedback.textContent = 'Erro de conexão: ' + error;
+            feedback.className = 'feedback error';
+        });
+    });
+
+    document.getElementById('clear_notes_btn').addEventListener('click', function() {
+        fetch('/clear_urls_session', {
+            method: 'POST'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                document.getElementById('added_notes_list').innerHTML = '';
+                const feedback = document.getElementById('feedback_area');
+                feedback.textContent = 'Lista de notas limpa.';
+                feedback.className = 'feedback info';
+                document.getElementById('url_input').value = '';
+            }
+        });
+    });
+</script>
 </body>
 </html>

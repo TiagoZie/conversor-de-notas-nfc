@@ -171,7 +171,7 @@ def extrair_dados(url):
         return razao_social, valor_total, data_hora, itens, numero_nota
 
     except Exception as e:
-        return f"Erro: {e}", None, None, []
+        return f"Erro: {e}", None, None, [], None
 
 
 # =====================================================
@@ -216,29 +216,115 @@ def perfis():
     return render_template("perfis.html")
 
 
+@app.route("/add_url_session", methods=["POST"])
+def add_url_session():
+    """Adiciona uma URL à lista na sessão via AJAX."""
+    if 'urls' not in session:
+        session['urls'] = []
+    
+    url = request.json.get('url')
+    if not url:
+        return {"status": "error", "message": "No URL provided"}, 400
+    
+    session['urls'].append(url)
+    session.modified = True  # Marcar sessão como modificada
+    return {"status": "success", "url_added": url, "count": len(session['urls'])}
+
+
+@app.route("/clear_urls_session", methods=["POST"])
+def clear_urls_session():
+    """Limpa a lista de URLs da sessão."""
+    session['urls'] = []
+    session['itens'] = []
+    session['combined_valor_total'] = "0,00"
+    session['combined_razoes'] = []
+    session['last_data_hora'] = None
+    session.modified = True
+    return {"status": "success"}
+
+
 @app.route("/index", methods=["GET", "POST"])
 def index():
     perfis = ler_perfis()
     if request.method == "POST":
-        url = request.form["url"]
+        # Processamento do formulário principal (botão GERAR)
+        urls = session.get("urls", [])
+        if not urls:
+            flash("Nenhuma nota foi adicionada. Adicione pelo menos uma URL.", "error")
+            return redirect(url_for("index"))
+
         cidade_destino = request.form["cidade_destino"]
         tipo_solicitacao = request.form["tipo_solicitacao"]
         perfil_index = int(request.form["perfil"])
 
-        session["url"] = url
+        # Salva dados da viagem na sessão
         session["cidade_destino"] = cidade_destino
         session["tipo_solicitacao"] = tipo_solicitacao
         session["perfil_index"] = perfil_index
 
-        razao_social, valor_total, data_hora, itens, numero_nota = extrair_dados(url)
-        session["itens"] = itens
+        all_itens = []
+        all_razoes = set()
+        total_valor = 0.0
+        last_data_hora = None
+        errored_urls = []
 
-        return render_template("resultado.html", url=url, razao_social=razao_social,
-                               valor_total=valor_total, data_hora=data_hora,
-                               perfil=perfis[perfil_index], perfil_index=perfil_index,
-                               itens=itens, tipo_solicitacao=tipo_solicitacao,
-                               cidade_destino=cidade_destino, numero_nota=numero_nota)
-    return render_template("index.html", perfis=perfis)
+        # Itera e processa todas as URLs
+        for url in urls:
+            razao_social, valor_str, data_hora, itens, numero_nota = extrair_dados(url)
+            
+            if "Erro:" in razao_social or valor_str is None:
+                errored_urls.append(url)
+                continue 
+
+            all_itens.extend(itens)
+            all_razoes.add(razao_social)
+            try:
+                # Converte valor monetário brasileiro (ex: "1.234,56") para float
+                clean_valor = valor_str.replace('.', '').replace(',', '.')
+                total_valor += float(clean_valor)
+            except (ValueError, TypeError):
+                errored_urls.append(f"{url} (valor inválido: {valor_str})")
+                continue
+            
+            last_data_hora = data_hora
+
+        if errored_urls:
+            flash(f"Algumas URLs falharam: {', '.join(errored_urls)}", "error")
+
+        if not all_itens:
+            flash("Nenhuma nota pôde ser processada com sucesso.", "error")
+            return redirect(url_for("index"))
+
+        # Formata o valor total de volta para o formato brasileiro
+        valor_total_combined = f"{total_valor:,.2f}".replace(',', 'X').replace('.', ',').replace('X', '.')
+
+        # Salva resultados combinados na sessão para o PDF e resultado.html
+        session["itens"] = all_itens
+        session["combined_valor_total"] = valor_total_combined
+        session["combined_razoes"] = list(all_razoes)
+        session["last_data_hora"] = last_data_hora
+        session["all_urls"] = urls # Salva para mostrar em resultado.html
+
+        return render_template("resultado.html", 
+                               urls=urls, 
+                               razoes_sociais=list(all_razoes),
+                               valor_total=valor_total_combined, 
+                               data_hora=last_data_hora,
+                               perfil=perfis[perfil_index], 
+                               perfil_index=perfil_index,
+                               itens=all_itens, 
+                               tipo_solicitacao=tipo_solicitacao,
+                               cidade_destino=cidade_destino)
+    
+    # Método GET: Apenas exibe a página
+    # Limpa a sessão ao carregar a página inicial para começar do zero
+    # Ou, para persistir, passamos as URLs existentes:
+    added_urls = session.get('urls', [])
+    if not added_urls: # Se for a primeira visita, zera tudo
+         session['urls'] = []
+         session['itens'] = []
+         
+    return render_template("index.html", perfis=perfis, added_urls=session.get('urls', []))
 
 
 # =====================================================
@@ -247,15 +333,25 @@ def index():
 @app.route("/gerar_pdf/<int:perfil_index>")
 def gerar_pdf(perfil_index):
     perfis = ler_perfis()
+    if perfil_index >= len(perfis):
+        flash("Erro de perfil. Tente novamente.", "error")
+        return redirect(url_for("index"))
+        
     perfil = perfis[perfil_index]
     cfg = get_configs()
 
     numero_solicitacao = incrementar_numero_solicitacao()
+    
+    # Pega os dados COMBINADOS da sessão
     tipo_solicitacao = session.get("tipo_solicitacao", "")
     cidade_destino = session.get("cidade_destino", "")
-    url = session.get("url", "")
     itens = session.get("itens", [])
-    razao_social, valor_total, data_hora, itens, numero_nota = extrair_dados(url)
+    valor_total = session.get("combined_valor_total", "0,00")
+
+    # Se não houver itens (sessão expirou ou erro), volta ao início
+    if not itens:
+        flash("Não há itens para gerar o PDF. Sessão expirou ou erro.", "error")
+        return redirect(url_for("index"))
 
     buffer = BytesIO()
     c = canvas.Canvas(buffer, pagesize=A4)
@@ -314,15 +410,9 @@ def gerar_pdf(perfil_index):
     row_height = 18
     table_x = x_left - 25
     table_y = y
-
-    if not itens:
-        itens = [{
-            "numero": numero_nota,
-            "data": data_hora.split()[0],
-            "descricao": "Tipo da despesa",
-            "valor": valor_total
-        }]
-
+    
+    # NÃO HÁ MAIS FALLBACK - 'itens' deve vir preenchido da sessão
+    
     c.setFont("Helvetica-Bold", 9)
     cx = table_x + 5
     for i, h in enumerate(headers):
@@ -364,6 +454,7 @@ def gerar_pdf(perfil_index):
     total_y = table_y - (len(itens) * row_height) - 25
     c.setFont("Helvetica-Bold", 10)
     c.rect(table_x + total_width - 120, total_y, 120, 20)
+    # Usa o 'valor_total' combinado vindo da sessão
     c.drawRightString(table_x + total_width - 10, total_y + 6, f"Total: {valor_total}")
     y = total_y - 50
 
